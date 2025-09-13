@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Smahi’s Purple Health Tracker</title>
+  <style>
+    :root{
+      --bg:#0f081b;
+      --panel:#1a1030;
+      --panel-2:#22143f;
+      --ink:#f5e9ff;
+      --ink-dim:#ccb3ff;
+      --accent:#7c4dff;        /* deep purple */
+      --accent-2:#b388ff;      /* light purple */
+      --accent-3:#d1c4e9;      /* lavender */
+      --ok:#7bd88f;
+      --warn:#ffd166;
+      --bad:#ff6b6b;
+      --chip:#2b184e;
+      --shadow: 0 8px 24px rgba(124,77,255,.25);
+      --radius: 14px;
+    }
+    html,body{margin:0;background:linear-gradient(180deg,var(--bg),#140d24 45%, #180f2c);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;}
+    .wrap{max-width:1000px;margin:24px auto;padding:0 16px;}
+    header{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:16px}
+    h1{font-size:clamp(22px,3vw,30px);margin:0;letter-spacing:.3px}
+    header .sub{color:var(--ink-dim);font-size:14px}
+    .card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid rgba(179,136,255,.25);box-shadow:var(--shadow);border-radius:var(--radius);padding:16px}
+    .grid{display:grid;grid-template-columns:1fr;gap:16px}
+    @media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
+    label{font-size:12px;color:var(--accent-3);display:block;margin-bottom:6px;letter-spacing:.2px}
+    input,select,textarea,button{
+      border-radius:10px;border:1px solid rgba(179,136,255,.35);background:#160d2a;color:var(--ink);padding:10px 12px;font-size:14px;outline:none
+    }
+    select{cursor:pointer}
+    input[type="number"]{width:110px}
+    textarea{min-height:44px;resize:vertical}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .section-title{display:flex;align-items:center;gap:10px;margin:4px 0 10px}
+    .chip{background:var(--chip);border:1px solid rgba(179,136,255,.25);padding:6px 10px;border-radius:999px;font-size:12px;color:var(--accent-2)}
+    .items{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+    .item{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;background:#17102c;border:1px solid rgba(179,136,255,.2);border-radius:10px;padding:10px}
+    .item .name{font-weight:600}
+    .item .meta{font-size:12px;color:var(--ink-dim)}
+    .item .note{font-size:12px;color:var(--accent-3);margin-top:6px}
+    .ghost{opacity:.7}
+    .pill{padding:6px 10px;border-radius:999px;font-weight:600}
+    .ok{background:rgba(123,216,143,.15);border:1px solid rgba(123,216,143,.4);color:var(--ok)}
+    .warn{background:rgba(255,209,102,.15);border:1px solid rgba(255,209,102,.4);color:var(--warn)}
+    .bad{background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.45);color:var(--bad)}
+    .accent{background:rgba(124,77,255,.15);border:1px solid rgba(124,77,255,.4);color:var(--accent-2)}
+    button{cursor:pointer;background:linear-gradient(180deg,rgba(124,77,255,.25),rgba(124,77,255,.15));border-color:rgba(124,77,255,.6)}
+    button:hover{filter:brightness(1.1)}
+    .totals{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+    .footer{opacity:.8;font-size:12px;margin-top:18px;color:var(--ink-dim)}
+    .advice{font-size:14px;line-height:1.35}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#120a22;border:1px solid rgba(179,136,255,.25);padding:0 6px;border-radius:6px}
+    .split{display:grid;grid-template-columns:1fr;gap:16px}
+    @media(min-width:700px){.split{grid-template-columns:1.2fr .8fr}}
+    .right .card{height:100%}
+    .spacer{height:8px}
+    .invis{display:none}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Hey, <span style="color:var(--accent-2)">Smahi</span> — your purple health tracker awaits 💜</h1>
+        <div class="sub">Track meals, add notes, and get a nudge for the next bite.</div>
+      </div>
+      <div class="row">
+        <div class="card">
+          <label for="day">Day</label>
+          <input id="day" type="date" />
+        </div>
+        <div class="card">
+          <label for="target">Daily calorie target</label>
+          <div class="row">
+            <input id="target" type="number" min="800" max="5000" step="10" value="1800" />
+            <button id="saveTarget">Save</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="split">
+      <main class="left">
+        <div class="grid">
+          <!-- Meal sections will be injected here -->
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <h3 style="margin:0">Today’s Summary</h3>
+            <span id="summaryStatus" class="pill accent">…</span>
+          </div>
+          <div class="totals">
+            <span class="chip">Total: <b id="totalCals">0</b> kcal</span>
+            <span class="chip">Remaining: <b id="remainCals">0</b> kcal</span>
+            <span class="chip">Meals logged: <b id="mealCount">0</b></span>
+            <span class="chip">Water: <b id="waterCount">0</b> glasses</span>
+          </div>
+          <div class="spacer"></div>
+          <div class="row">
+            <button id="addWater">+ Water</button>
+            <button id="removeWater">− Water</button>
+            <button id="resetDay" class="ghost">Reset day</button>
+            <button id="exportData">Export</button>
+            <label class="kbd">Data auto-saves locally</label>
+          </div>
+        </div>
+
+        <div class="footer">
+          Tip: Use the <span class="kbd">Food</span> dropdowns for quick picks or type your own, add calories, and sprinkle notes.
+        </div>
+      </main>
+
+      <aside class="right">
+        <div class="card">
+          <div class="section-title">
+            <h3 style="margin:0">Next-Meal Advice</h3>
+            <span id="adviceBadge" class="pill ok">Balanced</span>
+          </div>
+          <div id="advice" class="advice">
+            I’ll peek at what you’ve logged and suggest what plays nice with your remaining calories. Low drama, high purple.
+          </div>
+          <div class="spacer"></div>
+          <label for="pref">Preference focus (optional)</label>
+          <select id="pref">
+            <option value="">No preference</option>
+            <option>Higher protein</option>
+            <option>Lighter meal</option>
+            <option>More veggies</option>
+            <option>Post-workout</option>
+            <option>Sweet tooth</option>
+          </select>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <template id="mealTemplate">
+    <div class="card">
+      <div class="section-title">
+        <h3 class="title" style="margin:0"></h3>
+        <span class="chip">Logged: <b class="mealTotal">0</b> kcal</span>
+      </div>
+      <div class="row">
+        <div>
+          <label>Food</label>
+          <select class="foodSelect"></select>
+        </div>
+        <div>
+          <label>Qty</label>
+          <input type="number" class="qty" min="0.5" step="0.5" value="1" />
+        </div>
+        <div>
+          <label>Calories</label>
+          <input type="number" class="cal" min="0" step="1" placeholder="e.g., 120" />
+        </div>
+        <div>
+          <label>Notes</label>
+          <input type="text" class="noteInput" placeholder="Add a short note…" />
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button class="addBtn">Add</button>
+        </div>
+      </div>
+      <div class="items"></div>
+    </div>
+  </template>
+
+  <script>
+    // --- Simple food catalog (kcal per 1 serving) ---
+    const FOOD = {
+      Breakfast: {
+        "Oats porridge (1 bowl)": 250,
+        "Eggs (2)": 155,
+        "Greek yogurt (1 cup)": 130,
+        "Poha (1 plate)": 280,
+        "Upma (1 bowl)": 300,
+        "Banana (1)": 105,
+        "Toast + peanut butter": 220
+      },
+      Snack: {
+        "Apple (1)": 95,
+        "Roasted chana (30g)": 120,
+        "Mixed nuts (20g)": 120,
+        "Protein bar": 200,
+        "Buttermilk (1 glass)": 60,
+        "Dark chocolate (2 pcs)": 110
+      },
+      Lunch: {
+        "Chapati (1)": 110,
+        "Rice (1 cup)": 200,
+        "Dal (1 bowl)": 180,
+        "Grilled chicken (100g)": 165,
+        "Paneer bhurji (100g)": 250,
+        "Mixed veg sabzi (1 bowl)": 160,
+        "Curd (1/2 cup)": 55
+      },
+      Dinner: {
+        "Soup (1 bowl)": 140,
+        "Grilled fish (120g)": 180,
+        "Tofu stir-fry (1 bowl)": 220,
+        "Khichdi (1 bowl)": 280,
+        "Salad bowl": 160,
+        "Paneer tikka (100g)": 270,
+        "Egg bhurji (2 eggs)": 200
+      }
+    };
+
+    const MEALS = ["Breakfast","Snack","Lunch","Dinner"];
+    const $ = (q, el=document)=>el.querySelector(q);
+    const $$ = (q, el=document)=>[...el.querySelectorAll(q)];
+
+    // --- State ---
+    const state = {
+      day: null,                // yyyy-mm-dd
+      target: 1800,
+      water: 0,
+      entries: { Breakfast:[], Snack:[], Lunch:[], Dinner:[] }
+    };
+
+    const storageKey = d => `smahi-tracker:${d}`;
+
+    // --- Init ---
+    const dayInput = $("#day");
+    const targetInput = $("#target");
+    const saveTargetBtn = $("#saveTarget");
+    const grid = $(".grid");
+
+    function todayISO(){
+      const t = new Date();
+      t.setMinutes(t.getMinutes()-t.getTimezoneOffset());
+      return t.toISOString().slice(0,10);
+    }
+
+    function loadDay(d){
+      const raw = localStorage.getItem(storageKey(d));
+      const base = { day:d, target: Number(localStorage.getItem("smahi-target")) || 1800, water:0, entries: {Breakfast:[],Snack:[],Lunch:[],Dinner:[]} };
+      Object.assign(state, raw ? JSON.parse(raw) : base);
+      renderAll();
+    }
+
+    function save(){
+      localStorage.setItem(storageKey(state.day), JSON.stringify(state));
+    }
+
+    function saveTarget(){
+      const t = Math.max(800, Math.min(5000, Number(targetInput.value)||1800));
+      state.target = t;
+      localStorage.setItem("smahi-target", t);
+      save();
+      updateSummary();
+    }
+
+    // --- Build meal cards ---
+    function buildMealCards(){
+      grid.innerHTML = "";
+      for(const meal of MEALS){
+        const tpl = $("#mealTemplate").content.cloneNode(true);
+        const root = tpl.children[0];
+        $(".title", root).textContent = meal;
+        const select = $(".foodSelect", root);
+        // options
+        select.innerHTML = `<option value="">— choose —</option>` + Object.entries(FOOD[meal]).map(([kcalName, kcal])=>{
+          return `<option data-cal="${kcal}" value="${kcalName}">${kcalName} • ${kcal} kcal</option>`;
+        }).join("") + `<option value="__custom__">Custom…</option>`;
+        // elements
+        const qty = $(".qty", root);
+        const cal = $(".cal", root);
+        const noteInput = $(".noteInput", root);
+        const addBtn = $(".addBtn", root);
+        const items = $(".items", root);
+        const mealTotal = $(".mealTotal", root);
+
+        select.addEventListener("change", ()=>{
+          const opt = select.selectedOptions[0];
+          if(!opt) return;
+          if(opt.value === "__custom__"){
+            cal.value = "";
+            cal.placeholder = "Type calories";
+          }else{
+            const per = Number(opt.dataset.cal || 0);
+            const q = Number(qty.value || 1);
+            cal.value = Math.round(per * q);
+          }
+        });
+        qty.addEventListener("input", ()=>{
+          const opt = select.selectedOptions[0];
+          if(opt && opt.value !== "__custom__"){
+            const per = Number(opt.dataset.cal || 0);
+            const q = Number(qty.value || 1);
+            cal.value = Math.round(per * q);
+          }
+        });
+
+        addBtn.addEventListener("click", ()=>{
+          const food = select.value || "";
+          const calories = Number(cal.value || 0);
+          const qtyVal = Number(qty.value || 1);
+          const note = noteInput.value.trim();
+          if(!food || !calories){ addBtn.animate([{transform:'scale(1)'},{transform:'scale(1.05)'},{transform:'scale(1)'}],{duration:240}); return; }
+          state.entries[meal].push({ food, calories, qty: qtyVal, note, ts: Date.now() });
+          select.value = ""; qty.value = 1; cal.value = ""; noteInput.value = "";
+          save(); renderItems(meal, items, mealTotal);
+          updateSummary();
+        });
+
+        renderItems(meal, items, mealTotal);
+        grid.appendChild(root);
+      }
+    }
+
+    function renderItems(meal, itemsEl, totalEl){
+      const list = state.entries[meal];
+      itemsEl.innerHTML = "";
+      let total = 0;
+      for(const [i, it] of list.entries()){
+        total += Number(it.calories||0);
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <div>
+            <div class="name">${it.food} <span class="meta">× ${it.qty || 1}</span></div>
+            <div class="note">${it.note ? "📝 " + it.note : ""}</div>
+          </div>
+          <div>
+            <div class="meta" style="text-align:right">${it.calories} kcal</div>
+            <div class="row" style="margin-top:6px;justify-content:flex-end">
+              <button data-i="${i}" class="editBtn ghost">Edit</button>
+              <button data-i="${i}" class="delBtn">Delete</button>
+            </div>
+          </div>
+        `;
+        itemsEl.appendChild(div);
+      }
+      totalEl.textContent = total;
+
+      // hook buttons
+      $$(".delBtn", itemsEl).forEach(b=>{
+        b.addEventListener("click", ()=>{
+          const idx = Number(b.dataset.i);
+          state.entries[meal].splice(idx,1);
+          save(); renderItems(meal, itemsEl, totalEl);
+          updateSummary();
+        });
+      });
+      $$(".editBtn", itemsEl).forEach(b=>{
+        b.addEventListener("click", ()=>{
+          const idx = Number(b.dataset.i);
+          const it = state.entries[meal][idx];
+          const food = prompt("Food", it.food) ?? it.food;
+          const calories = Number(prompt("Calories (kcal)", it.calories) ?? it.calories);
+          const qty = Number(prompt("Quantity", it.qty) ?? it.qty);
+          const note = prompt("Note", it.note) ?? it.note;
+          state.entries[meal][idx] = { ...it, food, calories, qty, note };
+          save(); renderItems(meal, itemsEl, totalEl);
+          updateSummary();
+        });
+      });
+    }
+
+    // --- Summary + advice ---
+    function sumDay(){
+      return MEALS.reduce((acc,m)=>acc + state.entries[m].reduce((t, i)=>t + Number(i.calories||0),0), 0);
+    }
+
+    function updateSummary(){
+      const total = sumDay();
+      const target = state.target;
+      const remain = Math.max(0, target - total);
+      $("#totalCals").textContent = total;
+      $("#remainCals").textContent = remain;
+      $("#mealCount").textContent = MEALS.reduce((n,m)=>n + state.entries[m].length,0);
+      $("#waterCount").textContent = state.water;
+
+      const badge = $("#summaryStatus");
+      const ratio = total / target;
+      badge.className = "pill " + (ratio<0.6 ? "ok" : ratio<1.05 ? "warn" : "bad");
+      badge.textContent = ratio<0.6 ? "Plenty left" : ratio<1.05 ? "Close to target" : "Over target";
+
+      renderAdvice();
+    }
+
+    function hourNow(){
+      try { return new Date().getHours(); } catch { return 12; }
+    }
+
+    function renderAdvice(){
+      const total = sumDay();
+      const target = state.target;
+      const remain = target - total;
+      const pref = $("#pref").value;
+      const h = hourNow();
+
+      let window = "next meal";
+      if(h < 11) window = "late breakfast / snack";
+      else if(h < 16) window = "lunch / snack";
+      else if(h < 21) window = "dinner / light snack";
+      else window = "light snack / wind-down";
+
+      let tone = "";
+      let badge = "ok";
+      if(remain > 500) { tone = "You’ve got room to play—aim for something satisfying, not sleepy."; badge="ok"; }
+      else if(remain > 150) { tone = "Keep it tidy—focus on protein + veggies."; badge="warn"; }
+      else if(remain > 0) { tone = "Feather-light move from here. Think minimalist."; badge="warn"; }
+      else { tone = "You’re past target—no stress. Hydrate, stroll, and keep it gentle."; badge="bad"; }
+
+      const ideas = {
+        "": [
+          "Greek yogurt + berries (~180 kcal)",
+          "Paneer/cottage cheese tikka (~270 kcal)",
+          "Tofu stir-fry with veggies (~220 kcal)",
+          "Dal + salad (~250-350 kcal)",
+          "Egg bhurji + salad (~220 kcal)",
+          "Soup + toast (~220-300 kcal)"
+        ],
+        "Higher protein": [
+          "Grilled chicken/tofu (120–200 kcal per 100g) with greens",
+          "Greek yogurt + chia (~180 kcal)",
+          "Paneer bhurji, less oil (~220-260 kcal)"
+        ],
+        "Lighter meal": [
+          "Veg soup + side salad (~180-260 kcal)",
+          "Sprout chaat (~200 kcal)",
+          "Fruit + buttermilk (~150-200 kcal)"
+        ],
+        "More veggies": [
+          "Big salad bowl with beans (~220-320 kcal)",
+          "Stir-fried mixed veg, light oil (~180-240 kcal)",
+          "Khichdi + kachumber (~300 kcal)"
+        ],
+        "Post-workout": [
+          "Eggs on toast (~250-300 kcal)",
+          "Banana + yogurt (~220 kcal)",
+          "Protein shake + fruit (~220-280 kcal)"
+        ],
+        "Sweet tooth": [
+          "Dark chocolate 2 squares (~110 kcal) + fruit",
+          "Yogurt + honey + nuts (~220-280 kcal)",
+          "Protein bar (~200 kcal)"
+        ]
+      };
+
+      // Filter by remaining calories
+      const pool = (ideas[pref] && ideas[pref].length ? ideas[pref] : ideas[""]).filter(x=>{
+        const m = x.match(/~(\d+)(?:-|–| to )?(\d+)?/);
+        if(!m) return true;
+        const low = Number(m[1]);
+        const high = Number(m[2] || m[1]);
+        return remain >= 0 ? low <= remain + 120 : low <= 220; // allow small buffer
+      });
+
+      const pick = (arr)=>arr[Math.floor(Math.random()*arr.length)] || "Hydrate and check in with your hunger.";
+
+      $("#advice").innerHTML =
+        `<b>For ${window}:</b> ${tone}<br><br>`+
+        `<b>Idea:</b> ${pick(pool)}<br>`+
+        `<span style="opacity:.8">Thumb-rule: lean protein, veggies first, carbs to taste.</span>`;
+
+      const badgeEl = $("#adviceBadge");
+      badgeEl.className = "pill " + (badge==="ok"?"ok":badge==="warn"?"warn":"bad");
+      badgeEl.textContent = badge==="ok"?"Balanced":badge==="warn"?"Mindful":"Easy now";
+    }
+
+    // --- Events & utilities ---
+    $("#addWater").addEventListener("click", ()=>{ state.water++; save(); updateSummary(); });
+    $("#removeWater").addEventListener("click", ()=>{ state.water=Math.max(0,state.water-1); save(); updateSummary(); });
+    $("#resetDay").addEventListener("click", ()=>{
+      if(confirm("Clear today’s entries?")){ state.entries = {Breakfast:[],Snack:[],Lunch:[],Dinner:[]}; state.water=0; save(); buildMealCards(); updateSummary(); }
+    });
+    $("#exportData").addEventListener("click", ()=>{
+      const blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `smahi-tracker-${state.day}.json`;
+      a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+    });
+    $("#pref").addEventListener("change", renderAdvice);
+    saveTargetBtn.addEventListener("click", saveTarget);
+
+    // Day handling
+    dayInput.addEventListener("change", ()=>{
+      state.day = dayInput.value;
+      loadDay(state.day);
+    });
+
+    // Boot
+    const initDay = todayISO();
+    dayInput.value = initDay;
+    state.day = initDay;
+    targetInput.value = Number(localStorage.getItem("smahi-target")) || 1800;
+    buildMealCards();
+    loadDay(initDay);
+  </script>
+</body>
+</html>
